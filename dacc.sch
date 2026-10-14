@@ -250,12 +250,12 @@ spiceprefix=X
 }
 C {devices/capa.sym} 1560 810 1 0 {name=C1
 m=1
-value=0.25p
+value=0.125p
 footprint=1206
 device="ceramic capacitor"}
 C {devices/capa.sym} 1670 900 1 0 {name=C2
 m=1
-value=1p
+value=0.5p
 footprint=1206
 device="ceramic capacitor"}
 C {devices/gnd.sym} 1720 940 0 0 {name=l1 lab=GND
@@ -282,10 +282,10 @@ C {devices/lab_pin.sym} 1520 880 0 1 {name=p7 sig_type=std_logic lab=Vin2
 }
 C {devices/gnd.sym} 1340 880 0 0 {name=l3 lab=GND
 }
-C {devices/vsource.sym} 730 810 0 0 {name=V1 value="sine(0 4u 1k 0 0 0) AC 0.5 0" savecurrent=false}
-C {devices/vsource.sym} 730 920 0 0 {name=V2 value=1.15 savecurrent=false}
-C {devices/vsource.sym} 730 1050 0 0 {name=V3 value="sine(0 4u 1k 0 0 180) AC 0.5 180" savecurrent=false}
-C {devices/vsource.sym} 730 1160 0 0 {name=V4 value=1.15 savecurrent=false}
+C {devices/vsource.sym} 730 810 0 0 {name=V1 value="sine(0 0.5m 1MEG 0 0 0) AC 0.5 0" savecurrent=false}
+C {devices/vsource.sym} 730 920 0 0 {name=V2 value=1.3 savecurrent=false}
+C {devices/vsource.sym} 730 1050 0 0 {name=V3 value="sine(0 0.5m 1MEG 0 0 180) AC 0.5 180" savecurrent=false}
+C {devices/vsource.sym} 730 1160 0 0 {name=V4 value=1.3 savecurrent=false}
 C {devices/lab_pin.sym} 730 1000 0 0 {name=p8 sig_type=std_logic lab=Vin2
 
 }
@@ -302,42 +302,30 @@ C {devices/gnd.sym} 730 950 0 0 {name=l6 lab=GND
 }
 C {devices/code.sym} 1790 680 0 0 {name=NGSPICE
 only_toplevel=true
-value="
-.ac dec 10 1 10G
-.tran 10u 5m
-
-# Parameter-aware Subcircuit wrapper for NFET
-.subckt sky130_fd_pr__nfet_01v8 d g s b w=1 l=0.15 nf=1 mult=1 ad=0 as=0 pd=0 ps=0 nrd=0 nrs=0 sa=0 sb=0 sd=0
-.model ideal_n nmos vto=0.7 kp=160e-6
-m1 d g s b ideal_n w=\{w\} l=\{l\}
-.ends
-
-# Parameter-aware Subcircuit wrapper for PFET
-.subckt sky130_fd_pr__pfet_01v8 d g s b w=1 l=0.15 nf=1 mult=1 ad=0 as=0 pd=0 ps=0 nrd=0 nrs=0 sa=0 sb=0 sd=0
-.model ideal_p pmos vto=-0.7 kp=45e-6
-m1 d g s b ideal_p w=\{w\} l=\{l\}
-.ends
+value=
+".lib /home/mallineni/eda_tools/open_pdks/sources/sky130_fd_pr/models/sky130.lib.spice tt
 
 .control
-  run
-  set color0=white
-  set color1=black
+set color0=white
+set color1=black
 
-  ; --- 1. Plot Transient Waveform ---
-  setplot tran1
-  plot v(Vin1) v(Vout) 
+* 1. TRANSIENT SIMULATION
+tran 10n 5u
+plot v(vin1) v(vout) title Transient_Vin_vs_Vout
 
-  ; --- 2. Plot AC Bode Response (Gain & Phase) ---
-  setplot ac1
-  let phase_deg = (180/PI) * cph(v(Vout))
-  let gain_db = db(v(Vout))
-  plot gain_db phase_deg ylimit -60 100 
+* 2. AC FREQUENCY SWEEP
+ac dec 20 1 100G
 
-  ; --- 3. Measure Bandwidth & Phase Margin in Console ---
-  meas ac gbw when gain_db=0
-  meas ac phase_at_gbw find phase_deg when gain_db=0
-  let phase_margin = 180 + phase_at_gbw
-  print gbw phase_margin
-.endc
-"}
+let g_db = db(v(vout))
+let p_deg = (180/PI)*cph(v(vout))
+
+meas ac dc_gain find g_db at=1
+meas ac gbw when g_db=0
+meas ac p_gbw find p_deg when g_db=0
+
+print dc_gain gbw p_gbw
+
+plot g_db title Bode_Gain_dB
+plot p_deg title Bode_Phase_deg
+.endc"}
 C {devices/lab_pin.sym} 1670 830 0 1 {name=p11 sig_type=std_logic lab=Vout}
